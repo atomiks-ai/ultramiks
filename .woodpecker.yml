@@ -1,0 +1,76 @@
+# Ultramiks CI/CD Pipeline
+# Standalone repo deployment
+
+when:
+  branch: main
+  event: [push, manual]
+
+steps:
+  # Run unit tests
+  test:
+    image: node:20-slim
+    commands:
+      - npm ci
+      - npm run test:unit
+
+  # Build Docker image
+  build:
+    image: plugins/docker
+    settings:
+      registry: ghcr.io
+      repo: ghcr.io/atomiks-ai/ultramiks
+      dockerfile: Dockerfile
+      tags:
+        - latest
+        - ${CI_COMMIT_SHA:0:8}
+      username:
+        from_secret: github_username
+      password:
+        from_secret: github_token
+    when:
+      branch: main
+
+  # Deploy to helicarrier
+  deploy:
+    image: appleboy/drone-ssh
+    settings:
+      host: 100.91.168.83
+      username: root
+      key:
+        from_secret: ssh_key
+      command_timeout: 10m
+      script:
+        # Pull latest image
+        - echo "${GITHUB_TOKEN}" | docker login ghcr.io -u atomiks-ai --password-stdin
+        - docker pull ghcr.io/atomiks-ai/ultramiks:${CI_COMMIT_SHA:0:8}
+        - docker tag ghcr.io/atomiks-ai/ultramiks:${CI_COMMIT_SHA:0:8} ultramiks:latest
+
+        # Run database migrations
+        - docker exec postgres psql -U atomiks -d atomiks -f /tmp/ultramiks-migration.sql || echo "Schema already exists"
+
+        # Stop old container
+        - docker stop ultramiks 2>/dev/null || true
+        - docker rm ultramiks 2>/dev/null || true
+
+        # Start new container
+        - docker run -d \
+            --name ultramiks \
+            --restart unless-stopped \
+            --network atomiks-net \
+            -p 100.91.168.83:8201:8201 \
+            -e POSTGRESQL_URL="postgresql://atomiks:${DB_PASSWORD}@postgres:5432/atomiks?sslmode=disable" \
+            -e HEADLESS=true \
+            -e NODE_ENV=production \
+            -v /opt/atomiks/secrets:/secrets:ro \
+            ultramiks:latest
+
+        # Wait for health check
+        - sleep 10
+        - curl -f http://localhost:8201/health || exit 1
+
+        # Cleanup
+        - docker image prune -f
+
+        - echo "✅ Deployed ultramiks:${CI_COMMIT_SHA:0:8}"
+    when:
+      branch: main
