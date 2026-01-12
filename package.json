@@ -1,0 +1,65 @@
+{
+    "name": "@atomiks/ultramiks",
+    "version": "0.1.0",
+    "description": "Browser automation service for Gemini Ultra - exposes 34 Gemini features via HTTP API",
+    "main": "src/index.js",
+    "scripts": {
+        "start": "node src/index.js",
+        "dev": "nodemon src/index.js",
+        "test": "npm run test:unit && npm run test:integration",
+        "test:unit": "NODE_ENV=test jest tests/unit --coverage",
+        "test:integration": "NODE_ENV=test jest tests/integration --runInBand",
+        "test:watch": "jest --watch",
+        "lint": "eslint src tests",
+        "lint:fix": "eslint src tests --fix"
+    },
+    "keywords": [
+        "browser-automation",
+        "gemini",
+        "puppeteer",
+        "atomiks"
+    ],
+    "author": "Atomiks <hello@atomiks.ai>",
+    "license": "LicenseRef-Sustainable-Use",
+    "engines": {
+        "node": ">=20.0.0",
+        "npm": ">=10.0.0"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "puppeteer": "^21.11.0",
+        "puppeteer-extra": "^3.3.6",
+        "puppeteer-extra-plugin-stealth": "^2.11.2",
+        "pg": "^8.11.3",
+        "dotenv": "^16.4.1",
+        "winston": "^3.11.0"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "supertest": "^6.3.4",
+        "nodemon": "^3.0.3",
+        "eslint": "^8.56.0",
+        "@jest/globals": "^29.7.0"
+    },
+    "jest": {
+        "testEnvironment": "node",
+        "coverageDirectory": "coverage",
+        "collectCoverageFrom": [
+            "src/**/*.js",
+            "!src/index.js",
+            "!src/browser/**",
+            "!src/automations/**"
+        ],
+        "testMatch": [
+            "**/tests/**/*.test.js"
+        ],
+        "coverageThreshold": {
+            "global": {
+                "branches": 70,
+                "functions": 70,
+                "lines": 70,
+                "statements": 70
+            }
+        }
+    }
+}
